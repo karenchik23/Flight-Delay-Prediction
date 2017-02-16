@@ -1,0 +1,85 @@
+---
+title: "Predicting Airline Delay"
+author: "Karen Chik"
+date: "2/14/2017"
+output: html_document
+---
+
+
+#### Read Data
+
+Go to the airlines data site: 
+http://stat-computing.org/dataexpo/2009/the-data.html. 
+Read in the airlines data set for 2008 into a data frame.
+
+```{r,echo=FALSE}
+setwd("/Users/Karen/Desktop/Github/Flight Delays")
+library(data.table)
+air<-fread("2008.csv")
+nrow(air)
+
+```
+
+#### Remove rows with missing data
+
+```{r}
+air<-na.omit(air)
+nrow(air)
+```
+
+#### Regression
+
+Fit one regression model each to explain "DepDelay" and "ArrDelay". Use a subset of 1 million rows of the data with no missing data. Keep the remaining data for out-of-sample testing. 
+
+```{r}
+#Setting relevant dummy variables
+air$Jan <- ifelse(air$DayofMonth == 1,1,0)
+air$Feb <- ifelse(air$DayofMonth == 2,1,0)
+air$Mar <- ifelse(air$DayofMonth == 3,1,0)
+air$Apr <- ifelse(air$DayofMonth == 4,1,0)
+air$May <- ifelse(air$DayofMonth == 5,1,0)
+air$Jun <- ifelse(air$DayofMonth == 6,1,0)
+air$Jul <- ifelse(air$DayofMonth == 7,1,0)
+air$Aug <- ifelse(air$DayofMonth == 8,1,0)
+air$Sep <- ifelse(air$DayofMonth == 9,1,0)
+air$Oct <- ifelse(air$DayofMonth == 10,1,0)
+air$Nov <- ifelse(air$DayofMonth == 11,1,0)
+
+air$Mon <- ifelse(air$DayOfWeek == 1,1,0)
+air$Tues <- ifelse(air$DayOfWeek == 2,1,0)
+air$Wed <- ifelse(air$DayOfWeek == 3,1,0)
+air$Thurs <- ifelse(air$DayOfWeek == 4,1,0)
+air$Fri <- ifelse(air$DayOfWeek == 5,1,0)
+air$Sat <- ifelse(air$DayOfWeek == 6,1,0)
+
+train<- sample(nrow(air),1000000)
+test<-air[train, ]
+
+Dep_Delay1<-lm(DepDelay~CRSDepTime+Distance+CarrierDelay+TaxiOut+WeatherDelay+NASDelay+SecurityDelay+LateAircraftDelay+Mon+Tues+Wed+Thurs+Fri+Sat+Jan+Feb+Mar+Apr+May+Jun+Jul+Aug+Sep+Oct+Nov+factor(UniqueCarrier),data=test)
+summary(Dep_Delay1)
+
+Arr_Delay1<-lm(ArrDelay~DepDelay+Distance+TaxiIn+CarrierDelay+WeatherDelay+SecurityDelay+LateAircraftDelay+Mon+Tues+Wed+Thurs+Fri+Sat+Jan+Feb+Mar+Apr+May+Jun+Jul+Aug+Sep+Oct+Nov+factor(UniqueCarrier),data=test)
+summary(Arr_Delay1)
+
+```
+
+
+#### Take the fitted regression and predict delays using the remaining data from the no-missing data set. Report the absolute mean error in prediction. 
+
+```{r}
+#holdout sample
+
+hold<-air[-train,]
+library(lmtest)
+Dep_Delay_hold<-lm(DepDelay~CRSDepTime+Distance+CarrierDelay+TaxiOut+WeatherDelay+NASDelay+SecurityDelay+LateAircraftDelay+Mon+Tues+Wed+Thurs+Fri+Sat+Jan+Feb+Mar+Apr+May+Jun+Jul+Aug+Sep+Oct+Nov+factor(UniqueCarrier),data=hold)
+Dep_pred = predict(Dep_Delay_hold, data=hold) # Generate predicted probabilities
+Actual<- hold$DepDelay
+error<- Actual - Dep_pred
+mean(abs(error))
+
+Arr_Delay_hold<-lm(ArrDelay~DepDelay+Distance+TaxiIn+CarrierDelay+WeatherDelay+SecurityDelay+LateAircraftDelay+Mon+Tues+Wed+Thurs+Fri+Sat+Jan+Feb+Mar+Apr+May+Jun+Jul+Aug+Sep+Oct+Nov+factor(UniqueCarrier),data=hold)
+Arr_pred = predict(Arr_Delay_hold, data=hold)
+Actual<- hold$ArrDelay
+error1<- Actual - Arr_pred
+mean(abs(error1))
+```
